@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frise chronologique - Recherches sur Ouvéa et changement climatique</title>
+  <style>
+    :root {
+      --bg: #f7fafc;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --card: #ffffff;
+      --line: #cbd5e1;
+      --accent: #0f766e;
+      --ocean: #0ea5e9;
+      --coast: #f59e0b;
+      --climate: #ef4444;
+      --social: #8b5cf6;
+      --unknown: #94a3b8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: 28px 20px 18px;
+      background: linear-gradient(135deg, #e0f2fe, #ecfeff);
+      border-bottom: 1px solid #dbeafe;
+    }
+
+    header h1 {
+      margin: 0 0 8px 0;
+      font-size: 2rem;
+      line-height: 1.2;
+    }
+
+    header p {
+      margin: 0;
+      max-width: 980px;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 16px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .controls button {
+      border: 1px solid #cbd5e1;
+      background: white;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .controls button.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding: 12px 20px 0;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .timeline-wrapper {
+      overflow-x: auto;
+      padding: 24px 20px 48px;
+    }
+
+    .timeline {
+      min-width: 1400px;
+      position: relative;
+      padding-top: 40px;
+    }
+
+    .years {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0;
+      margin-bottom: 30px;
+      font-weight: bold;
+      color: var(--muted);
+    }
+
+    .year {
+      position: relative;
+      text-align: center;
+      font-size: 1rem;
+    }
+
+    .year::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 28px;
+      width: 2px;
+      height: calc(100% + 900px);
+      background: var(--line);
+      transform: translateX(-50%);
+      z-index: 0;
+    }
+
+    .tracks {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 250px;
+    }
+
+    .event {
+      background: var(--card);
+      border-left: 8px solid var(--unknown);
+      border-radius: 14px;
+      padding: 14px 14px 12px;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+    }
+
+    .event:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    .event.hidden {
+      display: none;
+    }
+
+    .event h3 {
+      margin: 0 0 6px;
+      font-size: 1rem;
+      line-height: 1.3;
+    }
+
+    .event .date {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .event .desc {
+      font-size: 0.93rem;
+      line-height: 1.45;
+      margin-bottom: 10px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      font-size: 0.8rem;
+      background: #f1f5f9;
+      color: #334155;
+      padding: 6px 8px;
+      border-radius: 999px;
+    }
+
+    .ocean { border-left-color: var(--ocean); }
+    .coast { border-left-color: var(--coast); }
+    .climate { border-left-color: var(--climate); }
+    .social { border-left-color: var(--social); }
+
+    .footer-note {
+      padding: 0 20px 40px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 20;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: min(760px, 100%);
+      max-height: 88vh;
+      overflow-y: auto;
+      background: white;
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.25);
+    }
+
+    .modal h2 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .modal .meta {
+      color: var(--muted);
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    .modal p {
+      line-height: 1.6;
+    }
+
+    .close-btn {
+      margin-top: 14px;
+      border: 0;
+      background: var(--accent);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    a {
+      color: #0f766e;
+      word-break: break-word;
+    }
+
+    @media (max-width: 900px) {
+      header h1 {
+        font-size: 1.6rem;
+      }
+      .timeline {
+        min-width: 1100px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Frise chronologique des recherches sur Ouvéa</h1>
+    <p>
+      Cette frise présente les principaux projets et missions de recherche liés au changement climatique et à ses effets à Ouvéa.
+      Clique sur une carte pour afficher un résumé plus détaillé, le budget lorsqu’il est connu, et la source associée.
+    </p>
+  </header>
+
+  <div class="controls">
+    <button class="filter-btn active" data-filter="all">Tout afficher</button>
+    <button class="filter-btn" data-filter="coast">Littoral et submersion</button>
+    <button class="filter-btn" data-filter="climate">Climat et modélisation</button>
+    <button class="filter-btn" data-filter="ocean">Océan, récifs, canicules marines</button>
+    <button class="filter-btn" data-filter="social">Adaptation et sciences sociales</button>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot" style="background: var(--coast)"></i> Littoral et submersion</span>
+    <span><i class="dot" style="background: var(--climate)"></i> Climat et modélisation</span>
+    <span><i class="dot" style="background: var(--ocean)"></i> Océan et récifs</span>
+    <span><i class="dot" style="background: var(--social)"></i> Adaptation et sciences sociales</span>
+  </div>
+
+  <div class="timeline-wrapper">
+    <div class="timeline">
+      <div class="years">
+        <div class="year">1990s</div>
+        <div class="year">2000s</div>
+        <div class="year">2010s</div>
+        <div class="year">2021</div>
+        <div class="year">2022</div>
+        <div class="year">2023</div>
+        <div class="year">2025+</div>
+      </div>
+
+      <div class="tracks" id="tracks"></div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Source principale pour plusieurs budgets et périodes : le livret « Inventaire des réseaux et des projets de recherche »
+    présenté au Pacific Resilience Meeting 2023. Certains projets sont régionaux et ne concernent Ouvéa qu’indirectement.
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h2 id="modalTitle"></h2>
+      <div class="meta" id="modalMeta"></div>
+      <p id="modalText"></p>
+      <p><strong>Budget :</strong> <span id="modalBudget"></span></p>
+      <p><strong>Source :</strong> <span id="modalSource"></span></p>
+      <button class="close-btn" id="closeModal">Fermer</button>
+    </div>
+  </div>
+
+  <script>
+    const columns = ["1990s", "2000s", "2010s", "2021", "2022", "2023", "2025+"];
+
+    const events = [
+      {
+        title: "Campagnes lagonaires ORSTOM / IRD",
+        period: "1993-1994",
+        column: "1990s",
+        category: "ocean",
+        short: "Inventaires de référence sur le lagon d’Ouvéa.",
+        text: "Ces campagnes ont documenté la biodiversité lagonaire, notamment les poissons et le mégabenthos. Elles servent surtout de base écologique historique pour comprendre ensuite les effets potentiels du changement climatique sur les récifs et les ressources.",
+        budget: "Absence de preuve trouvée",
+        sourceLabel: "Rapports ORSTOM / IRD, montants non retrouvés publiquement",
+        sourceUrl: ""
+      },
+      {
+        title: "Production planctonique du lagon",
+        period: "1997",
+        column: "1990s",
+        category: "ocean",
+        short: "Étude du fonctionnement de la base de la chaîne alimentaire.",
+        text: "Cette recherche analyse la biomasse et la production du plancton dans le lagon d’Ouvéa. Elle n’est pas un projet climat au sens strict, mais elle fournit une base utile pour évaluer la vulnérabilité des écosystèmes aux changements environnementaux.",
+        budget: "Absence de preuve trouvée",
+        sourceLabel: "Publication scientifique, budget non publié",
+        sourceUrl: ""
+      },
+      {
+        title: "Modèle trophique du lagon d’Ouvéa",
+        period: "2004",
+        column: "2000s",
+        category: "ocean",
+        short: "Modélisation des flux d’énergie dans le lagon.",
+        text: "Ce travail modélise les relations alimentaires dans le lagon et aide à comprendre le fonctionnement global de l’écosystème. Il constitue une référence de fond pour situer de futurs impacts climatiques sur la productivité, les habitats et les ressources.",
+        budget: "Absence de preuve trouvée",
+        sourceLabel: "Publication scientifique, budget non publié",
+        sourceUrl: ""
+      },
+      {
+        title: "OBLIC",
+        period: "Depuis 2014",
+        column: "2010s",
+        category: "coast",
+        short: "Observatoire du littoral de Nouvelle-Calédonie.",
+        text: "OBLIC suit les dynamiques passées et actuelles du littoral grâce à des relevés de terrain, des mesures topomorphologiques, des photos aériennes et des images satellites. C’est un outil structurant pour documenter l’érosion et la submersion dans le contexte du changement climatique.",
+        budget: "Absence de preuve trouvée",
+        sourceLabel: "Livret Pacific Resilience Meeting 2023, p. 3",
+        sourceUrl: ""
+      },
+      {
+        title: "Cartographie de la submersion à Ouvéa",
+        period: "2018",
+        column: "2010s",
+        category: "coast",
+        short: "Projection des zones exposées à la montée des eaux.",
+        text: "Cette étude cartographie les secteurs d’Ouvéa potentiellement touchés par la submersion marine en combinant scénarios d’élévation du niveau de la mer et événements extrêmes. Elle est centrale pour la planification de l’adaptation sur l’atoll.",
+        budget: "Absence de preuve trouvée",
+        sourceLabel: "Communication scientifique JNGCGC 2018, budget non trouvé",
+        sourceUrl: ""
+      },
+      {
+        title: "PACPATH",
+        period: "2021-2023",
+        column: "2021",
+        category: "social",
+        short: "Trajectoires de durabilité pour le Pacifique Sud.",
+        text: "PACPATH réunit scientifiques et acteurs des territoires autour des impacts du changement climatique sur l’océan, l’alimentation, les ressources et le patrimoine. Ouvéa apparaît dans les réflexions sur l’érosion côtière et la sécurité alimentaire.",
+        budget: "170 000 €",
+        sourceLabel: "Livret Pacific Resilience Meeting 2023, p. 17",
+        sourceUrl: ""
+      },
+      {
+        title: "CLIPSSA",
+        period: "2021-2026",
+        column: "2021",
+        category: "climate",
+        short: "Projections climatiques haute résolution pour le Pacifique.",
+        text: "CLIPSSA produit des simulations climatiques régionales de plus en plus fines afin d’anticiper les impacts du changement climatique sur les territoires insulaires. Le projet associe modélisation, savoirs locaux et stratégies d’adaptation.",
+        budget: "3 851 598 €",
+        sourceLabel: "AFD - projet CLIPSSA",
+        sourceUrl: "https://www.afd.fr/fr/projets/climat-du-pacifique-savoirs-locaux-et-strategies-dadaptation-clipssa"
+      },
+      {
+        title: "Climate Change Flagship",
+        period: "2022-2025",
+        column: "2022",
+        category: "climate",
+        short: "Simulations océan-atmosphère sur 100 ans.",
+        text: "Ce programme développe des simulations climatiques à long terme pour les ZEE du Pacifique, avec un fort intérêt pour les interactions entre océan et atmosphère. Il sert de base scientifique à plusieurs projets d’adaptation régionaux.",
+        budget: "1,2 M€",
+        sourceLabel: "Livret Pacific Resilience Meeting 2023, p. 15",
+        sourceUrl: ""
+      },
+      {
+        title: "FUTURISKS",
+        period: "2022-2028",
+        column: "2022",
+        category: "coast",
+        short: "Comprendre les risques côtiers passés et futurs.",
+        text: "FUTURISKS vise à mieux comprendre l’érosion et la submersion marine dans les territoires tropicaux insulaires. Le projet s’intéresse aussi aux solutions d’adaptation co-construites avec les acteurs locaux.",
+        budget: "80 000 €",
+        sourceLabel: "Livret Pacific Resilience Meeting 2023, p. 5",
+        sourceUrl: ""
+      },
+      {
+        title: "GLADYS",
+        period: "2022-2024",
+        column: "2022",
+        category: "coast",
+        short: "Prototype de protection du littoral à Saint-Joseph.",
+        text: "GLADYS teste à Ouvéa des dispositifs concrets de protection contre l’érosion et la submersion. Le projet combine diagnostic de terrain, modélisation et expérimentation réelle sur une portion du littoral de Saint-Joseph.",
+        budget: "Absence de preuve trouvée",
+        sourceLabel: "Livret Pacific Resilience Meeting 2023, p. 8",
+        sourceUrl: ""
+      },
+      {
+        title: "ODySéÎles",
+        period: "2022-2025",
+        column: "2022",
+        category: "social",
+        short: "Science participative sur l’érosion des îles.",
+        text: "ODySéÎles relie habitants, associations et chercheurs afin de suivre l’érosion côtière et d’imaginer des réponses adaptées. Ouvéa fait partie des îles pilotes aux côtés de Mayotte, Yeu et Noirmoutier.",
+        budget: "Absence de preuve trouvée",
+        sourceLabel: "Livret Pacific Resilience Meeting 2023, p. 9",
+        sourceUrl: ""
+      },
+      {
+        title: "IRIMA",
+        period: "2023-2030",
+        column: "2023",
+        category: "climate",
+        short: "Science du risque et outils de prévision.",
+        text: "IRIMA structure une approche intégrée des risques climatiques, avec des travaux sur la submersion marine, les cyclones et les trajectoires d’adaptation. Le programme vise à produire des outils concrets pour l’alerte et la décision.",
+        budget: "400 000 €",
+        sourceLabel: "Livret Pacific Resilience Meeting 2023, p. 11",
+        sourceUrl: ""
+      },
+      {
+        title: "HEAT",
+        period: "2023-2025",
+        column: "2023",
+        category: "ocean",
+        short: "Prévision des canicules marines et terrestres.",
+        text: "HEAT étudie les vagues de chaleur marines et terrestres dans le Pacifique insulaire et leurs effets sur les récifs et la santé humaine. Il développe aussi des indicateurs de risque utiles à la gestion.",
+        budget: "75 000 €",
+        sourceLabel: "Livret Pacific Resilience Meeting 2023, p. 18",
+        sourceUrl: ""
+      },
+      {
+        title: "TICTAC",
+        period: "2022-2025",
+        column: "2023",
+        category: "ocean",
+        short: "Suivi des récifs face aux canicules marines.",
+        text: "TICTAC suit les effets des canicules marines sur des récifs de Nouvelle-Calédonie afin d’identifier les zones les plus sensibles ou les plus résistantes. Le projet est régional plutôt que centré sur Ouvéa, mais il éclaire les risques coralliens pertinents pour l’atoll.",
+        budget: "215 000 €",
+        sourceLabel: "Livret Pacific Resilience Meeting 2023, p. 19",
+        sourceUrl: ""
+      },
+      {
+        title: "MaHeWa",
+        period: "2023-2025",
+        column: "2023",
+        category: "social",
+        short: "Vulnérabilité socio-écologique aux canicules marines.",
+        text: "MaHeWa combine océanographie, écologie et sciences sociales pour comprendre les menaces liées aux canicules marines. Le projet vise aussi à développer des outils d’aide à la décision pour les gestionnaires.",
+        budget: "1,5 M€",
+        sourceLabel: "Livret Pacific Resilience Meeting 2023, p. 20",
+        sourceUrl: ""
+      },
+      {
+        title: "CLIPSSA-2",
+        period: "2025-2031",
+        column: "2025+",
+        category: "climate",
+        short: "Extension de CLIPSSA aux littoraux et océans.",
+        text: "CLIPSSA-2 doit prolonger les travaux du premier programme en renforçant les volets littoraux, océaniques et sociétaux. L’objectif est d’affiner encore l’adaptation au changement climatique dans les territoires insulaires.",
+        budget: "Absence de preuve trouvée",
+        sourceLabel: "Livret Pacific Resilience Meeting 2023, p. 16",
+        sourceUrl: ""
+      }
+    ];
+
+    const tracks = document.getElementById("tracks");
+
+    function renderTimeline(filter = "all") {
+      tracks.innerHTML = "";
+
+      columns.forEach(colName => {
+        const col = document.createElement("div");
+        col.className = "col";
+
+        events
+          .filter(e => e.column === colName)
+          .filter(e => filter === "all" || e.category === filter)
+          .forEach(e => {
+            const card = document.createElement("div");
+            card.className = `event ${e.category}`;
+            card.innerHTML = `
+              <h3>${e.title}</h3>
+              <div class="date">${e.period}</div>
+              <div class="desc">${e.short}</div>
+              <div class="chips">
+                <span class="chip">${labelForCategory(e.category)}</span>
+                <span class="chip">${e.budget}</span>
+              </div>
+            `;
+            card.addEventListener("click", () => openModal(e));
+            col.appendChild(card);
+          });
+
+        tracks.appendChild(col);
+      });
+    }
+
+    function labelForCategory(cat) {
+      if (cat === "coast") return "Littoral";
+      if (cat === "climate") return "Climat";
+      if (cat === "ocean") return "Océan";
+      if (cat === "social") return "Adaptation";
+      return "Autre";
+    }
+
+    const modalBackdrop = document.getElementById("modalBackdrop");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalMeta = document.getElementById("modalMeta");
+    const modalText = document.getElementById("modalText");
+    const modalBudget = document.getElementById("modalBudget");
+    const modalSource = document.getElementById("modalSource");
+    const closeModalBtn = document.getElementById("closeModal");
+
+    function openModal(event) {
+      modalTitle.textContent = event.title;
+      modalMeta.textContent = `${event.period} • ${labelForCategory(event.category)}`;
+      modalText.textContent = event.text;
+      modalBudget.textContent = event.budget;
+
+      if (event.sourceUrl) {
+        modalSource.innerHTML = `<a href="${event.sourceUrl}" target="_blank" rel="noopener noreferrer">${event.sourceLabel}</a>`;
+      } else {
+        modalSource.textContent = event.sourceLabel;
+      }
+
+      modalBackdrop.classList.add("open");
+    }
+
+    function closeModal() {
+      modalBackdrop.classList.remove("open");
+    }
+
+    closeModalBtn.addEventListener("click", closeModal);
+    modalBackdrop.addEventListener("click", (e) => {
+      if (e.target === modalBackdrop) closeModal();
+    });
+
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderTimeline(btn.dataset.filter);
+      });
+    });
+
+    renderTimeline("all");
+  </script>
+</body>
+</html>
